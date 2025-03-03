@@ -9,59 +9,74 @@ Elevator::Elevator(int elevatorID, int currentFloor, QObject* parent)
 
 //// ================== Replace moveToFloor ==================
 void Elevator::moveToFloor(int destinationFloor) {
-    // If the elevator is already there, open the door so passengers can board/exit.
+    // If we're already at the destination, just open the door.
     if (currentFloor == destinationFloor) {
-        // Log/update state to "idle" (already arrived)
         state = "idle";
         emit updateElevatorState(elevatorID, currentFloor, state);
-
-        // Sound the bell and open doors
         ringBell();
         openDoor();
-
-        // Close doors automatically after 3s
         QTimer::singleShot(3000, this, &Elevator::closeDoor);
         return;
     }
 
-    state = "moving";
-    emit updateElevatorState(elevatorID, currentFloor, state);
-
+    // Append the new destination if it's not already in the queue.
     if (!destinationFloors.contains(destinationFloor)) {
         destinationFloors.append(destinationFloor);
     }
-    // If the elevator isn’t already moving, start the movement timer
+
+    // Set the elevator state to moving.
+    state = "moving";
+    emit updateElevatorState(elevatorID, currentFloor, state);
+
+    // If the movement timer isn't active, start it.
     if (!movementTimer->isActive()) {
+        // Use a lambda to drive the floor-by-floor movement.
         connect(movementTimer, &QTimer::timeout, this, [this]() {
-            if (!destinationFloors.isEmpty()) {
-                int nextDest = destinationFloors.first();
-                if (currentFloor < nextDest) {
-                    currentFloor++;
-                } else if (currentFloor > nextDest) {
-                    currentFloor--;
-                }
-
+            // If no pending destinations, stop the timer.
+            if (destinationFloors.isEmpty()) {
+                movementTimer->stop();
+                state = "idle";
                 emit updateElevatorState(elevatorID, currentFloor, state);
+                return;
+            }
 
-                if (currentFloor == nextDest) {
-                    destinationFloors.removeFirst();
-                    state = "idle";
-                    emit updateElevatorState(elevatorID, currentFloor, state);
-                    ringBell();
-                    openDoor();
+            // Get the next destination in the queue.
+            int nextDest = destinationFloors.first();
 
-                    QTimer::singleShot(3000, this, &Elevator::closeDoor);
+            // Move one floor at a time toward the next destination.
+            if (currentFloor < nextDest) {
+                currentFloor++;
+            } else if (currentFloor > nextDest) {
+                currentFloor--;
+            }
 
+            emit updateElevatorState(elevatorID, currentFloor, state);
+
+            // When the next destination is reached:
+            if (currentFloor == nextDest) {
+                destinationFloors.removeFirst();
+                ringBell();
+                openDoor();
+                // After a 3-second delay, close the door and check for more stops.
+                QTimer::singleShot(3000, this, [this]() {
+                    closeDoor();
                     if (destinationFloors.isEmpty()) {
+                        state = "idle";
+                        emit updateElevatorState(elevatorID, currentFloor, state);
                         movementTimer->stop();
+                    } else {
+                        // Continue moving if there are additional destinations.
+                        state = "moving";
+                        emit updateElevatorState(elevatorID, currentFloor, state);
                     }
-                }
+                });
             }
         });
-
-        movementTimer->start(1000); // ✅ Floor-by-floor movement
+        movementTimer->start(1000); // Move one floor per second.
     }
 }
+
+
 
 
 // ================== Door Controls ==================
@@ -99,5 +114,5 @@ QString Elevator::getState() const {
 
 
 bool Elevator::hasPendingDestinations() const {
-    return !destinationQueue.isEmpty() || (state == "moving");
+    return !destinationFloors.isEmpty() || (state == "moving");
 }

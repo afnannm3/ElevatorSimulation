@@ -27,6 +27,10 @@ public:
      // Flags
      bool isOnElevator() const;
 
+     // New: Track if the passenger has disembarked at their destination.
+     bool isFinished() const;
+     void markFinished();
+
 
 
 
@@ -44,6 +48,7 @@ private:
     bool elevatorRequestMade;  //  New flag to prevent multiple requests
 
     bool onElevator;           // Is the passenger already on an elevator?
+    bool finished;
 
 
 };

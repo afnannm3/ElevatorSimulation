@@ -57,7 +57,13 @@ bool Passenger::isOnElevator() const {
 }
 
 
+bool Passenger::isFinished() const {
+    return finished;
+}
 
+void Passenger::markFinished() {
+    finished = true;
+}
 
 
 

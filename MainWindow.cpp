@@ -25,16 +25,20 @@ MainWindow::MainWindow(QWidget *parent)
             ui->logText->append(QString("Elevator %1 is now at floor %2, state: %3")
                                 .arg(elevatorID).arg(floor).arg(state));
 
-            // If door just opened, board any waiting passengers
             if (state == "Door Open") {
+                // Disembark passengers: those who are on board and have reached their destination.
                 for (Passenger* p : passengers) {
-                    // If passenger hasn't boarded yet and is on this floor
+                    if (p->isOnElevator() && (p->getDestinationFloor() == floor) && !p->isFinished()) {
+                        ui->logText->append(QString("Passenger %1 disembarks Elevator %2 at floor %3.")
+                                            .arg(p->getID()).arg(elevatorID).arg(floor));
+                        p->markFinished();
+                    }
+                }
+                // Board waiting passengers: those who haven't boarded yet and are waiting at this floor.
+                for (Passenger* p : passengers) {
                     if (!p->isOnElevator() && (p->getStartFloor() == floor)) {
-                        ui->logText->append(QString(
-                            "Passenger %1 boards Elevator %2 at floor %3. Destination = %4."
-                        ).arg(p->getID()).arg(elevatorID).arg(floor).arg(p->getDestinationFloor()));
-
-                        // Mark passenger as on board, which triggers a carRequest
+                        ui->logText->append(QString("Passenger %1 boards Elevator %2 at floor %3. Destination = %4.")
+                                            .arg(p->getID()).arg(elevatorID).arg(floor).arg(p->getDestinationFloor()));
                         p->boardElevator(elevatorID);
                     }
                 }
@@ -162,6 +166,7 @@ void MainWindow::setupPassengers() {
             passengers.append(passenger);
 
             connect(passenger, &Passenger::elevatorRequested, controlSystem, &ControlSystem::handleFloorRequest);
+            connect(passenger, &Passenger::carRequest, controlSystem, &ControlSystem::handleCarRequest);
         }
     }
 
@@ -247,3 +252,26 @@ void MainWindow::updateElevatorDisplay() {
 //    }
 }
 
+// ================== Simulation Completion Check ==================
+void MainWindow::checkIfSimulationComplete() {
+    // Check that all passengers have finished (disembarked)
+    bool allFinished = true;
+    for (Passenger* p : passengers) {
+        if (!p->isFinished()) {
+            allFinished = false;
+            break;
+        }
+    }
+    // Also check that all elevators are idle.
+    bool allIdle = true;
+    for (Elevator* e : controlSystem->getElevators()) {
+        if (e->getState() != "idle") {
+            allIdle = false;
+            break;
+        }
+    }
+    if (allFinished && allIdle && simulationStep > 0) {
+        ui->logText->append("Simulation complete. All events handled and all elevators idle.");
+        simulationTimer->stop();
+    }
+}
