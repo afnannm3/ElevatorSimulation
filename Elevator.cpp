@@ -7,6 +7,25 @@ Elevator::Elevator(int elevatorID, int currentFloor, QObject* parent)
     movementTimer = new QTimer(this);
 }
 
+void Elevator::activateOverloadMode() {
+    overloadActive = true;
+    state = "overload";
+
+    // Stop the movement timer so we do not move
+    if (movementTimer->isActive()) {
+        movementTimer->stop();
+    }
+
+    // Possibly open the doors so passengers can unload
+    openDoor();
+
+    // Emit an update so that logs show we are now "overload"
+    emit updateElevatorState(elevatorID, currentFloor, "OVERLOAD");
+
+    // Present an audio warning
+    emit playAudioWarning("Overload! Reduce weight before resuming movement.");
+}
+
 void Elevator::overrideDestination(int safeFloor) {
     // Clear all current destinations
     destinationFloors.clear();

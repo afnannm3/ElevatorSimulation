@@ -20,6 +20,8 @@ public:
     void handleHelpButton();
     void handleOverload();
 
+    void activateOverloadMode();
+
     int getCurrentFloor() const;
     QString getState() const;
 
@@ -51,8 +53,9 @@ private:
     QVector<int> destinationQueue;  // All floors we still need to visit
 
 
-    // New flag to indicate if the simulation is active.
+    // flag to indicate if the simulation is active.
      bool simulationActive;
+      bool overloadActive;
 
 };
 

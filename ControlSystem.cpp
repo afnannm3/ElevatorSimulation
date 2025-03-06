@@ -146,8 +146,23 @@ void ControlSystem::handleSafetyEvent(SafetyEvent* event) {
             elevators[eID]->overrideDestination(SAFE_FLOOR);
         }
     }
-    // For Overload, Door Obstacle, etc., you can add more logic
+    else if (evtType == "Overload") {
+        int eID = event->getElevatorID();
+        // If an elevator triggered Overload:
+        if (eID >= 0 && eID < elevators.size()) {
+            emit updateSimulationLog(
+                QString("Elevator %1 OVERLOAD alarm: Elevator not moving until load reduced.")
+                .arg(eID)
+            );
+            // This method will stop movement & show an in-elevator message
+            elevators[eID]->activateOverloadMode();
+        }
+    }
+    // If eID is invalid or negative, we might just ignore or log an error
 }
+
+    // For Overload, Door Obstacle, etc., you can add more logic
+
 
 // ================== Getter Methods (No Change) ==================
 QVector<Elevator*> ControlSystem::getElevators() const {
