@@ -15,6 +15,8 @@ public:
 
     QString getEventType() const;
 
+      int getElevatorID() const;
+
 signals:
     void safetyEventTriggered(QString eventType);
 

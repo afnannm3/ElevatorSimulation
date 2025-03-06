@@ -2,7 +2,8 @@
 
 Passenger::Passenger(int passengerID, int startFloor, int destinationFloor, QObject* parent)
     : QObject(parent), passengerID(passengerID), currentFloor(startFloor), destinationFloor(destinationFloor),
-      elevatorRequestMade(false) {}  // ✅ Correctly initialized
+      elevatorRequestMade(false), onElevator(false), finished(false), boardedElevatorID(-1) {}  // Initialize to -1 (none)
+
 
 void Passenger::requestElevator(int direction) {
     if (!elevatorRequestMade) {  // ✅ Prevent multiple requests
@@ -44,13 +45,12 @@ int Passenger::getID() const {
 //new
 
 void Passenger::boardElevator(int elevatorID) {
-    // Mark passenger as on board
+    // Mark passenger as on board and record which elevator they boarded.
     onElevator = true;
-
+    boardedElevatorID = elevatorID;
     // Immediately request the elevator to go to the passenger’s destination
     emit carRequest(elevatorID, destinationFloor);
 }
-
 
 bool Passenger::isOnElevator() const {
     return onElevator;
@@ -65,6 +65,9 @@ void Passenger::markFinished() {
     finished = true;
 }
 
+int Passenger::getBoardedElevatorID() const {
+    return boardedElevatorID;
+}
 
 
 

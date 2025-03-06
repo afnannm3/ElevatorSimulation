@@ -26,6 +26,15 @@ public:
     // We'll expose this so we can see if the elevator is truly done or not
     bool hasPendingDestinations() const;
 
+
+
+    // New: Setter to enable/disable processing of queued events.
+    void setSimulationActive(bool active);
+
+    //forcibly clear old destinations, move to safe floor
+    void overrideDestination(int safeFloor);
+
+
 signals:
     void updateElevatorState(int elevatorID, int currentFloor, QString state);
     void playAudioWarning(QString message);
@@ -40,6 +49,10 @@ private:
     QTimer* movementTimer;
 
     QVector<int> destinationQueue;  // All floors we still need to visit
+
+
+    // New flag to indicate if the simulation is active.
+     bool simulationActive;
 
 };
 

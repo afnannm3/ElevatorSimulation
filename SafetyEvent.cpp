@@ -14,3 +14,8 @@ void SafetyEvent::resolveEvent() {
 QString SafetyEvent::getEventType() const {
     return eventType;
 }
+
+// Definition for getElevatorID() with the same signature as in the header:
+int SafetyEvent::getElevatorID() const {
+    return elevatorID;
+}

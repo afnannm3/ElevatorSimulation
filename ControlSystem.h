@@ -3,11 +3,13 @@
 
 #include <QObject>
 #include <QVector>
+#include <QQueue>
+#include <QPair>
+#include <QMap>
+#include <QTimer>
 #include "Elevator.h"
 #include "Floor.h"
 #include "SafetyEvent.h"
-#include <QQueue>
-#include <QPair>
 
 class ControlSystem : public QObject {
     Q_OBJECT
@@ -22,6 +24,9 @@ public:
     QVector<Elevator*> getElevators() const;
     QVector<Floor*> getFloors() const;
 
+
+    bool isFireActive() const;
+
 signals:
     void updateSimulationLog(const QString& logMessage);
 
@@ -34,11 +39,20 @@ private:
     QVector<Floor*> floors;
 
     // If we can’t find an idle elevator, we store the request here
-        // QPair<int,int> = <floor, direction>
-        QQueue<QPair<int,int>> pendingRequests;
+    // QPair<int,int> = <floor, direction>
+    QQueue<QPair<int,int>> pendingRequests;
 
-        // Helper
-        void checkPendingRequests();
+    // Timers for active "Help" alarms. Key = elevatorID, Value = pointer to QTimer.
+    // When the "Help" alarm is triggered, we start a 5-second timer. If it times out,
+    // we call 911.
+    QMap<int, QTimer*> helpTimers;
+
+    void checkPendingRequests();
+
+    static const int SAFE_FLOOR = 1;
+
+
+      bool fireActive;
 };
 
 #endif // CONTROLSYSTEM_H

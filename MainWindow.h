@@ -52,7 +52,9 @@ private:
     Building* building;
     ControlSystem* controlSystem;
     QVector<Passenger*> passengers;
+
     int simulationStep;
+    bool simulationRunning;   // True while simulation is active
     QTimer* simulationTimer;
 
     // Helper to see if all passengers/elevators are done

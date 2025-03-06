@@ -2,11 +2,13 @@
 #include "Floor.h"
 #include "SafetyEvent.h"
 #include <limits>  // For INT_MAX
+#include "Elevator.h"
+
+
 
 ControlSystem::ControlSystem(int numElevators, int numFloors, QObject* parent)
-    : QObject(parent)
-{
-    // Create the elevators
+    : QObject(parent), fireActive(false)
+{   // Create the elevators
     for (int i = 0; i < numElevators; ++i) {
         Elevator* e = new Elevator(i, 1, this);
         elevators.append(e);
@@ -22,8 +24,22 @@ ControlSystem::ControlSystem(int numElevators, int numFloors, QObject* parent)
     }
 }
 
+bool ControlSystem::isFireActive() const {
+    return fireActive;
+}
+
+
 // ================== Replace handleFloorRequest ==================
 void ControlSystem::handleFloorRequest(int floor, int direction) {
+
+    if (fireActive) {
+        emit updateSimulationLog(
+            QString("Ignoring floor request at floor %1 because Fire alarm is active.")
+            .arg(floor)
+        );
+        return;
+    }
+
     QString dirStr = (direction > 0) ? "up" : "down";
     emit updateSimulationLog(QString("Elevator requested at floor %1, direction: %2")
                              .arg(floor).arg(dirStr));
@@ -55,6 +71,13 @@ void ControlSystem::handleFloorRequest(int floor, int direction) {
 
 // ================== handleCarRequest (No Change) ==================
 void ControlSystem::handleCarRequest(int elevatorID, int destination) {
+    // If Fire is active, ignore new in-car requests as well
+    if (fireActive) {
+        emit updateSimulationLog(
+            QString("Ignoring car request to floor %1 (Elevator %2) due to active Fire alarm.")
+            .arg(destination).arg(elevatorID));
+        return;
+    }
     emit updateSimulationLog(QString("Elevator %1 moving to floor %2")
                              .arg(elevatorID).arg(destination));
     elevators[elevatorID]->moveToFloor(destination);
@@ -62,7 +85,68 @@ void ControlSystem::handleCarRequest(int elevatorID, int destination) {
 
 // ================== handleSafetyEvent (No Change) ==================
 void ControlSystem::handleSafetyEvent(SafetyEvent* event) {
-    emit updateSimulationLog(QString("Safety Event Triggered: %1").arg(event->getEventType()));
+    QString evtType = event->getEventType();
+    emit updateSimulationLog(QString("Safety Event Triggered: %1").arg(evtType));
+
+    if (evtType == "Help") {
+        // 5-second timer logic for "Help"
+        int elevatorID = event->getElevatorID();
+        emit updateSimulationLog(
+            QString("Elevator %1 HELP: Connecting to building safety service...").arg(elevatorID)
+        );
+
+        QTimer* helpTimer = new QTimer(this);
+        helpTimer->setSingleShot(true);
+        connect(helpTimer, &QTimer::timeout, this, [this, elevatorID]() {
+            emit updateSimulationLog(
+                QString("Elevator %1 HELP: No response. Placing 911 call now!")
+                .arg(elevatorID)
+            );
+        });
+        helpTimer->start(5000);
+
+        // If there's already a timer for this elevator, stop & remove it
+        if (helpTimers.contains(elevatorID)) {
+            QTimer* oldTimer = helpTimers.value(elevatorID);
+            oldTimer->stop();
+            oldTimer->deleteLater();
+        }
+        helpTimers.insert(elevatorID, helpTimer);
+    }
+    else if (evtType == "Fire") {
+        // The system is now in Fire mode
+        fireActive = true;
+
+        // Clear pending requests so none are serviced
+        pendingRequests.clear();
+
+        int eID = event->getElevatorID();
+
+        if (eID == -1) {
+            // Building triggered a Fire alarm: move ALL elevators
+            emit updateSimulationLog(
+                "Building Fire Alarm: All elevators going to safe floor."
+            );
+            for (int i = 0; i < elevators.size(); ++i) {
+                emit updateSimulationLog(
+                    QString("Elevator %1: EMERGENCY FIRE ALERT! Proceeding to floor %2.")
+                    .arg(i).arg(SAFE_FLOOR)
+                );
+                elevators[i]->ringBell();
+                // Force each elevator to go to SAFE_FLOOR
+                elevators[i]->overrideDestination(SAFE_FLOOR);
+            }
+        } else if (eID >= 0 && eID < elevators.size()) {
+            // A single elevator triggers the alarm
+            emit updateSimulationLog(
+                QString("Elevator %1 Fire Alarm: Proceeding to floor %2 (safe floor).")
+                .arg(eID).arg(SAFE_FLOOR)
+            );
+            elevators[eID]->ringBell();
+            elevators[eID]->overrideDestination(SAFE_FLOOR);
+        }
+    }
+    // For Overload, Door Obstacle, etc., you can add more logic
 }
 
 // ================== Getter Methods (No Change) ==================
